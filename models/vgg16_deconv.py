@@ -47,6 +47,7 @@ class VGG16_conv(torch.nn.Module):
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(2, stride=2, return_indices=True))
         self.feature_outputs = [0]*len(self.features)
+        self.pool_indices = dict()
 
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(512*7*7, 4096),  # 224x244 image pooled down to 7x7 from features
@@ -67,23 +68,32 @@ class VGG16_conv(torch.nn.Module):
                 self.features[i].weight.data = layer.weight.data
                 self.features[i].bias.data = layer.bias.data
 
-    def forward(self, x):
+    def get_conv_layer_indices(self):
+        return [0, 2, 5, 7, 10, 12, 14, 17, 19, 21, 24, 26, 28]
+
+    def forward_features(self, x):
         output = x
         for i, layer in enumerate(self.features):
             if isinstance(layer, torch.nn.MaxPool2d):
                 output, indices = layer(output)
-                self.feature_outputs[i] = (output, indices)
+                self.feature_outputs[i] = output
+                self.pool_indices[i] = indices
             else:
                 output = layer(output)
                 self.feature_outputs[i] = output
+        return output
+
+    def forward(self, x):
+        output = self.forward_features(x)
         output = output.view(output.size()[0], -1)
         output = self.classifier(output)
         return output
 
 class VGG16_deconv(torch.nn.Module):
-    def __init__(self, n_classes):
+    def __init__(self):
         super(VGG16_deconv, self).__init__()
         self.conv2DeconvIdx = {0:17, 2:16, 5:14, 7:13, 10:11, 12:10, 14:9, 17:7, 19:6, 21:5, 24:3, 26:2, 28:1}
+        self.unpool2PoolIdx = {15:4, 12:9, 8:16, 4:23, 0:30}
         
         self.deconv_features = torch.nn.Sequential(
             torch.nn.MaxUnpool2d(2, stride=2),
@@ -134,18 +144,26 @@ class VGG16_deconv(torch.nn.Module):
             if isinstance(layer, torch.nn.Conv2d):
                 idx = self.conv2DeconvIdx[i]
                 self.deconv_features[idx].weight.data = layer.weight.data
-                self.deconv_features[idx].bias.data = layer.bias.data
+                #self.deconv_features[idx].bias.data = layer.bias.data
                 
 
-    def forward(self, x, layer_number, map_number):
+    def forward(self, x, layer_number, map_number, pool_indices):
         start_idx = self.conv2DeconvIdx[layer_number]
         if not isinstance(self.deconv_first_layers[start_idx], torch.nn.ConvTranspose2d):
             raise ValueError('Layer '+str(layer_number)+' is not of type Conv2d')
         # set weight and bias
         self.deconv_first_layers[start_idx].weight.data = self.deconv_features[start_idx].weight[map_number].data[None, :, :, :]
-        bias = float(self.deconv_features[start_idx].bias[map_number].data.numpy()[0])
+        #bias = float(self.deconv_features[start_idx].bias[map_number].data.numpy()[0])
+        bias=0.
+        
+        # first layer will be single channeled, since we're picking a particular filter
         self.deconv_first_layers[start_idx].bias.data = torch.FloatTensor(np.array([bias for _ in range(self.deconv_first_layers[start_idx].bias.size()[0])]))
         output = self.deconv_first_layers[start_idx](x)
+
+        # transpose conv through the rest of the network
         for i in range(start_idx+1, len(self.deconv_features)):
-            output = self.deconv_features[i](output)
+            if isinstance(self.deconv_features[i], torch.nn.MaxUnpool2d):
+                output = self.deconv_features[i](output, pool_indices[self.unpool2PoolIdx[start_idx]])
+            else:
+                output = self.deconv_features[i](output)
         return output
