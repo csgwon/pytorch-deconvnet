@@ -8,6 +8,7 @@ import numpy as np
 import sys
 
 def vis_layer(activ_map):
+    plt.clf()
     plt.subplot(121)
     plt.imshow(activ_map[:,:,0], cmap='gray')
 
