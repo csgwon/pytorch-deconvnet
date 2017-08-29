@@ -163,7 +163,7 @@ class VGG16_deconv(torch.nn.Module):
         # transpose conv through the rest of the network
         for i in range(start_idx+1, len(self.deconv_features)):
             if isinstance(self.deconv_features[i], torch.nn.MaxUnpool2d):
-                output = self.deconv_features[i](output, pool_indices[self.unpool2PoolIdx[start_idx]])
+                output = self.deconv_features[i](output, pool_indices[self.unpool2PoolIdx[i]])
             else:
                 output = self.deconv_features[i](output)
         return output

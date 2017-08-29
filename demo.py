@@ -43,11 +43,11 @@ if __name__ == '__main__':
     print(vgg16_c)
 
     plt.ion() # remove blocking
-    plt.figure()
+    plt.figure(figsize=(10,5))
     vgg16_d = VGG16_deconv()
     done = False
     while not done:
-        layer = input('Layer to view: ')
+        layer = input('Layer to view (0-29, -1 to exit): ')
         try:
             layer = int(layer)
         except ValueError:
@@ -71,10 +71,12 @@ if __name__ == '__main__':
 
         done_act_maps = False
         while not done_act_maps:
-            map_idx = input('Activation Map index (0-'+str(n_maps-1)+'): ')
+            map_idx = input('Activation Map index (0-'+str(n_maps-1)+', -1 to exit): ')
             try:
                 map_idx = int(map_idx)
             except ValueError:
+                continue
+            if map_idx < 0:
                 break
 
             decon = vgg16_d(vgg16_c.feature_outputs[layer][0][map_idx][None,None,:,:], conv_layer, map_idx, vgg16_c.pool_indices)
