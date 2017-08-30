@@ -42,7 +42,7 @@ if __name__ == '__main__':
     vgg16_d = VGG16_deconv()
     done = False
     while not done:
-        layer = input('Layer to view (0-29, -1 to exit): ')
+        layer = input('Layer to view (0-30, -1 to exit): ')
         try:
             layer = int(layer)
         except ValueError:
@@ -62,7 +62,7 @@ if __name__ == '__main__':
             if conv_layer not in conv_layer_indices:
                 continue
 
-        n_maps = activ_map.shape[1]
+        n_maps = activ_map.shape[0]
 
         marker = None
         while True:
