@@ -77,6 +77,7 @@ if __name__ == '__main__':
             map_img_x_dim, map_img_y_dim, _ = activ_map_grid.shape
             x_step = map_img_x_dim//(map_x_dim+1)
 
+            print('Click on an activation map to continue')
             x_pos, y_pos = plt.ginput(1)[0]
             x_index = x_pos // (map_x_dim+1)
             y_index = y_pos // (map_y_dim+1)
